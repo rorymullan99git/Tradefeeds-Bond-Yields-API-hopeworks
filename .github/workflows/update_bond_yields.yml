@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -30,5 +30,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git add data/australia_bond_yields.json
-          git commit -m "Update Australia bond yields data" || echo "No changes to commit"
-          git push
+          git diff --staged --quiet || (git commit -m "Update Australia bond yields data" && git push)

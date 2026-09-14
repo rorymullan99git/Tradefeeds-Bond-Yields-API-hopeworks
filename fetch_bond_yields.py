@@ -32,18 +32,59 @@ def fetch_bond_yields():
 
         results = data.get('result', {}).get('output', [])
 
-        # Filter for 10Y and 2Y
-        filtered_results = [item for item in results if item.get('type') in ('10Y', '2Y')]
+        # Process and filter for 10Y and 2Y
+        filtered_results = []
+        for item in results:
+            item_type = item.get('type', '').upper()
+            if item_type in ('10Y', '2Y'):
+                # Normalize date
+                if 'date' in item and ':' in item['date']:
+                    item['date'] = item['date'].replace(':', '-')
+
+                # Parse yield as float
+                if 'yield' in item:
+                    try:
+                        item['yield'] = float(item['yield'])
+                    except ValueError:
+                        pass
+
+                filtered_results.append(item)
 
         output_dir = "data"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
         output_file = os.path.join(output_dir, "australia_bond_yields.json")
-        with open(output_file, 'w') as f:
-            json.dump(filtered_results, f, indent=4)
 
-        print(f"Successfully saved {len(filtered_results)} records to {output_file}")
+        existing_data = []
+        if os.path.exists(output_file):
+            try:
+                with open(output_file, 'r') as f:
+                    existing_data = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+        # Deduplicate by date and bond type
+        seen = set()
+        for item in existing_data:
+            key = (item.get('date'), item.get('type', '').upper())
+            seen.add(key)
+
+        new_records_count = 0
+        for item in filtered_results:
+            key = (item.get('date'), item.get('type', '').upper())
+            if key not in seen:
+                existing_data.append(item)
+                seen.add(key)
+                new_records_count += 1
+
+        # Optionally sort by date
+        existing_data.sort(key=lambda x: (x.get('date', ''), x.get('type', '')))
+
+        with open(output_file, 'w') as f:
+            json.dump(existing_data, f, indent=4)
+
+        print(f"Successfully saved {new_records_count} new records to {output_file} (Total: {len(existing_data)})")
 
     except urllib.error.URLError as e:
         print(f"Failed to fetch data: {e}")
