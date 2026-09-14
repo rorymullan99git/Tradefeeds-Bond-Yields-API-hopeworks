@@ -1,0 +1,34 @@
+name: Update Bond Yields
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight UTC
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run fetch script
+        env:
+          TRADEFEEDS_API_KEY: ${{ secrets.TRADEFEEDS_API_KEY }}
+        run: python fetch_bond_yields.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/australia_bond_yields.json
+          git commit -m "Update Australia bond yields data" || echo "No changes to commit"
+          git push
